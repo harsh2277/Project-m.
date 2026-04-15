@@ -585,14 +585,14 @@ const Dashboard: React.FC = () => {
               <div className="overflow-x-auto flex-1">
                 <table className="w-full text-left" style={{ borderSpacing: '0 8px', borderCollapse: 'separate' }}>
                   <thead>
-                    <tr className="text-xs font-bold text-slate-800 bg-[#f8fafc]">
+                    <tr className="text-xs font-bold text-slate-800 bg-[#f5f5f5]">
                       <th className="py-3 px-4 rounded-l-xl">Project Name</th>
                       <th className="py-3 px-4">Due Date</th>
                       <th className="py-3 px-4 rounded-r-xl text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm font-semibold text-slate-500">
-                    <tr className="bg-[#f8fafc]/50">
+                    <tr className="bg-[#f5f5f5]/50">
                       <td className="py-3 px-4 rounded-l-xl w-1/2">BoostApp Social Revamp</td>
                       <td className="py-3 px-4 w-1/4">Nov 07, 2024</td>
                       <td className="py-3 px-4 rounded-r-xl w-1/4 text-center">
@@ -606,7 +606,7 @@ const Dashboard: React.FC = () => {
                         <span className="inline-block px-3 py-1.5 bg-indigo-50 text-indigo-600 text-[11px] rounded-lg font-bold w-full">In Progress</span>
                       </td>
                     </tr>
-                    <tr className="bg-[#f8fafc]/50">
+                    <tr className="bg-[#f5f5f5]/50">
                       <td className="py-3 px-4 rounded-l-xl">EcoLeadpunt Website</td>
                       <td className="py-3 px-4">Nov 12, 2024</td>
                       <td className="py-3 px-4 rounded-r-xl text-center">

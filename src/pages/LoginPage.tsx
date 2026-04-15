@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const LoginPage: React.FC = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-[#F4F4F4]">
+    <div className="min-h-screen flex items-center justify-center p-4 md:p-8 bg-[#f5f5f5]">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

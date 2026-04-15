@@ -1,8 +1,9 @@
 import React from 'react';
 import {
-  LayoutDashboard, FolderDot, CheckSquare, Calendar, Users,
-  LineChart, FolderOpen, Hexagon, Zap, Settings, Search,
-  Bell, PanelLeftClose, PanelLeftOpen, User, LogOut, ChevronDown, Plus
+  LayoutDashboard, FolderDot, CheckSquare, Calendar,
+  Zap, Settings, Search, BarChart3,
+  Bell, PanelLeftClose, PanelLeftOpen, User, LogOut, ChevronDown, Plus,
+  Timer, FileText, Plug
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -43,7 +44,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   return (
-    <div className="flex h-screen bg-[#F0F4F9] overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#f5f5f5] overflow-hidden font-sans">
       {/* Left Sidebar */}
       <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} transition-all duration-300 bg-white flex flex-col border-r border-slate-100 shrink-0 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
         <div className={`py-6 flex items-center ${isSidebarCollapsed ? 'flex-col gap-4 px-2 justify-center' : 'gap-2 px-6'}`}>
@@ -55,29 +56,15 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
         <div className={`flex-1 overflow-y-auto ${isSidebarCollapsed ? 'px-2' : 'px-4'} space-y-8 pb-6 custom-scrollbar`}>
           <div>
-            {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 mb-3 tracking-wider">MAIN MENU</p>}
             <div className="space-y-1">
               <SidebarItem icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/dashboard'} path="/dashboard" isCollapsed={isSidebarCollapsed} />
               <SidebarItem icon={FolderDot} label="Projects" active={location.pathname === '/projects'} path="/projects" isCollapsed={isSidebarCollapsed} />
               <SidebarItem icon={CheckSquare} label="Tasks" hasDropdown isCollapsed={isSidebarCollapsed} path="/tasks" active={location.pathname === '/tasks'} onPlusClick={() => window.dispatchEvent(new CustomEvent('openAddTask'))} />
-              <SidebarItem icon={Calendar} label="Calendar" isCollapsed={isSidebarCollapsed} />
-              <SidebarItem icon={Users} label="Teams" isCollapsed={isSidebarCollapsed} />
-            </div>
-          </div>
-
-          <div>
-            {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 mb-3 tracking-wider">TOOLS</p>}
-            <div className="space-y-1">
-              <SidebarItem icon={LineChart} label="Reports" isCollapsed={isSidebarCollapsed} />
-              <SidebarItem icon={FolderOpen} label="Files" isCollapsed={isSidebarCollapsed} />
-            </div>
-          </div>
-
-          <div>
-            {!isSidebarCollapsed && <p className="px-4 text-xs font-bold text-slate-400 mb-3 tracking-wider">PROJECTS</p>}
-            <div className="space-y-1">
-              <SidebarItem icon={Hexagon} label="ProService Desk" badge="14" isCollapsed={isSidebarCollapsed} />
-              <SidebarItem icon={Hexagon} label="BoostVibe 2.0" badge="5" className="text-violet-500" isCollapsed={isSidebarCollapsed} />
+              <SidebarItem icon={Calendar} label="Calendar" path="/calendar" active={location.pathname === '/calendar'} isCollapsed={isSidebarCollapsed} />
+              <SidebarItem icon={Timer} label="Timer" path="/timer" active={location.pathname === '/timer'} isCollapsed={isSidebarCollapsed} />
+              <SidebarItem icon={FileText} label="Timesheet" path="/timesheet" active={location.pathname === '/timesheet'} isCollapsed={isSidebarCollapsed} />
+              <SidebarItem icon={BarChart3} label="Reports" path="/reports" active={location.pathname === '/reports'} isCollapsed={isSidebarCollapsed} />
+              <SidebarItem icon={Plug} label="Integrations" path="/integrations" active={location.pathname === '/integrations'} isCollapsed={isSidebarCollapsed} />
             </div>
           </div>
         </div>
@@ -103,7 +90,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full bg-[#f8fafc] overflow-hidden">
+      <main className="flex-1 flex flex-col h-full bg-[#f5f5f5] overflow-hidden">
         {/* Header */}
         <header className="p-[12px] bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-5">

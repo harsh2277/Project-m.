@@ -6,6 +6,9 @@ import CreateProject from './pages/CreateProject';
 import EditProject from './pages/EditProject';
 import ProjectDetail from './pages/ProjectDetail';
 import Tasks from './pages/Tasks';
+import CalendarPage from './pages/Calendar';
+import TimerPage from './pages/Timer';
+import TimesheetPage from './pages/Timesheet';
 import './App.css';
 
 function App() {
@@ -20,6 +23,9 @@ function App() {
         <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/projects/:id/edit" element={<EditProject />} />
         <Route path="/tasks" element={<Tasks />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/timer" element={<TimerPage />} />
+        <Route path="/timesheet" element={<TimesheetPage />} />
       </Routes>
     </Router>
   );
