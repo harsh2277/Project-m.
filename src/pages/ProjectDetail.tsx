@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Layout } from '../components/Layout';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, MoreHorizontal, Calendar, MessageSquare,
   GripHorizontal, Activity, Target, Clock, FileText,
   CheckCircle2, DownloadCloud, Search, UploadCloud, Check,
-  Paperclip, Pencil, X, ChevronDown, Flag, Trash2, Edit2
+  Paperclip, Pencil, X, ChevronDown, Flag, Trash2, Edit2, AlertTriangle
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -274,6 +274,106 @@ const EditKanbanTaskModal = ({
   );
 };
 
+/* ─── Delete Project Modal ──────────────────────────────────── */
+const PROJECT_NAME = 'Figma Design System';
+
+const DeleteProjectModal = ({
+  onClose, onConfirm,
+}: { onClose: () => void; onConfirm: () => void }) => {
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(false);
+  const [shaking, setShaking] = useState(false);
+
+  const handleDelete = () => {
+    if (input.trim() === PROJECT_NAME) {
+      onConfirm();
+    } else {
+      setError(true);
+      setShaking(true);
+      setTimeout(() => setShaking(false), 500);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative bg-white rounded-[24px] border border-[#EEEEEE] shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        style={{ animation: 'modalPop 0.22s cubic-bezier(0.16,1,0.3,1)' }}
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-[#F5F5F5]">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[14px] bg-[#FFEBEE] flex items-center justify-center text-[#D32F2F]">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h2 className="text-[17px] font-bold text-[#1A1A1A]">Delete Project</h2>
+                <p className="text-[12px] font-medium text-[#999999] mt-0.5">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-full text-[#999999] hover:text-[#1A1A1A] hover:bg-[#F5F5F5] transition-all">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          <div className="bg-[#FFF5F5] border border-[#FFCDD2] rounded-[14px] p-4">
+            <p className="text-[13px] font-medium text-[#D32F2F] leading-relaxed">
+              You are about to permanently delete <span className="font-bold">{PROJECT_NAME}</span> and all its tasks, files, and activity. This cannot be recovered.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-bold text-[#1A1A1A] mb-1.5">
+              Type the project name to confirm
+            </label>
+            <p className="text-[12px] font-medium text-[#999999] mb-3">
+              Please type <span className="font-bold text-[#1A1A1A]">{PROJECT_NAME}</span> to proceed.
+            </p>
+            <input
+              autoFocus
+              value={input}
+              onChange={e => { setInput(e.target.value); setError(false); }}
+              onKeyDown={e => e.key === 'Enter' && handleDelete()}
+              placeholder={PROJECT_NAME}
+              className={`w-full px-4 py-3 rounded-[14px] border text-[14px] font-medium outline-none transition-all ${
+                error
+                  ? 'border-[#D32F2F] bg-[#FFF5F5] text-[#D32F2F] focus:ring-2 focus:ring-red-200'
+                  : 'border-[#EEEEEE] bg-[#F5F5F5] text-[#1A1A1A] focus:bg-white focus:border-[#1A1A1A] focus:ring-2 focus:ring-black/5'
+              } ${shaking ? 'animate-shake' : ''}`}
+            />
+            {error && (
+              <p className="mt-2 text-[12px] font-semibold text-[#D32F2F] flex items-center gap-1.5">
+                <AlertTriangle size={12} /> Project name doesn't match. Please try again.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 pb-6 pt-2">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-full text-[14px] font-semibold text-[#666666] border border-[#EEEEEE] bg-white hover:bg-[#F5F5F5] transition-colors">Cancel</button>
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#D32F2F] text-white rounded-full text-[14px] font-semibold hover:bg-[#B71C1C] transition-colors shadow-sm"
+          >
+            <Trash2 size={15} /> Delete Project
+          </button>
+        </div>
+      </div>
+      <style>{`
+        @keyframes modalPop{from{transform:scale(0.94) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+        @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+        .animate-shake{animation:shake 0.45s ease;}
+      `}</style>
+    </div>
+  );
+};
+
 /* ─── Component ─────────────────────────────────────────────── */
 const ProjectDetail = () => {
   const navigate = useNavigate();
@@ -284,6 +384,17 @@ const ProjectDetail = () => {
   const [taskForm, setTaskForm] = useState({ title: '', tag: 'Design', status: 'To Do', date: '', comments: '' });
   const [activeKanbanTask, setActiveKanbanTask] = useState<{ task: any; columnTitle: string } | null>(null);
   const [editKanbanTask, setEditKanbanTask]     = useState<any | null>(null);
+  const [showMenu, setShowMenu]                 = useState(false);
+  const [showDeleteModal, setShowDeleteModal]   = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   /* Drag-and-Drop */
   const onDragEnd = (result: any) => {
@@ -357,6 +468,30 @@ const ProjectDetail = () => {
               <Plus size={18} />
               Add Task
             </button>
+            {/* 3-dot menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(prev => !prev)}
+                className="w-10 h-10 flex items-center justify-center bg-white border border-[#EEEEEE] rounded-full text-[#666666] hover:bg-[#F5F5F5] hover:text-[#1A1A1A] transition-all shadow-sm"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+              {showMenu && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-48 bg-white border border-[#EEEEEE] rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.1)] z-50 py-1.5 overflow-hidden"
+                  style={{ animation: 'menuDrop 0.18s cubic-bezier(0.16,1,0.3,1)' }}
+                >
+                  <button
+                    onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-[#D32F2F] hover:bg-[#FFF5F5] transition-colors text-left"
+                  >
+                    <Trash2 size={15} />
+                    Delete Project
+                  </button>
+                </div>
+              )}
+              <style>{`@keyframes menuDrop{from{transform:translateY(-6px) scale(0.97);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}`}</style>
+            </div>
           </div>
         </div>
 
@@ -996,6 +1131,16 @@ const ProjectDetail = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showDeleteModal && (
+        <DeleteProjectModal
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => {
+            setShowDeleteModal(false);
+            navigate('/projects');
+          }}
+        />
       )}
     </Layout>
   );
