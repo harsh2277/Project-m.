@@ -88,7 +88,7 @@ const LoginPage: React.FC = () => {
                 />
                 <span className="text-[13px] text-text-muted font-medium">Remember Me</span>
               </label>
-              <button type="button" className="text-[13px] font-semibold text-primary hover:opacity-75 transition-opacity">
+              <button type="button" onClick={() => navigate('/forgot-password')} className="text-[13px] font-semibold text-primary hover:opacity-75 transition-opacity">
                 Forgot Your Password?
               </button>
             </div>
