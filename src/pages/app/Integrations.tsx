@@ -8,6 +8,13 @@ import {
   X, Trash2, Send, Link, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  fetchJiraProjects,
+  fetchJiraTasksForProjects,
+  verifyJiraConnection,
+} from '../../lib/jira';
+import type { JiraConfig, JiraProject } from '../../types/jira';
+import { JIRA_STORAGE_KEYS } from '../../types/jira';
 
 const INITIAL_APPS = [
   {
@@ -112,51 +119,79 @@ const JiraModal = ({ isOpen, onClose, onSave, app }: any) => {
     token: app.jiraToken || ''
   });
   const [isValidating, setIsValidating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<JiraProject[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [connectedUser, setConnectedUser] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleVerify = async () => {
     setIsValidating(true);
     setError(null);
+    setProjects([]);
+    setSelectedKeys([]);
+    setConnectedUser(null);
 
     try {
-      // Basic validation of URL format
       let siteUrl = data.url.trim();
       if (!siteUrl.startsWith('http')) siteUrl = `https://${siteUrl}`;
       if (siteUrl.endsWith('/')) siteUrl = siteUrl.slice(0, -1);
 
-      // Jira API Basic Auth: base64(email:token)
-      const auth = btoa(`${data.email.trim()}:${data.token.trim()}`);
+      const config: JiraConfig = {
+        url: siteUrl,
+        email: data.email.trim(),
+        token: data.token.trim(),
+      };
 
-      // We use a CORS proxy for development to bypass browser restrictions
-      // Note: In production, you should use your own backend as a proxy
-      const proxyPrefix = "https://cors-anywhere.herokuapp.com/";
-      const finalUrl = `${proxyPrefix}${siteUrl}/rest/api/3/myself`;
+      const [me, fetchedProjects] = await Promise.all([
+        verifyJiraConnection(config),
+        fetchJiraProjects(config),
+      ]);
 
-      const response = await fetch(finalUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      });
+      setData(config);
+      setConnectedUser(me.displayName);
+      setProjects(fetchedProjects);
+      setSelectedKeys(fetchedProjects.slice(0, 5).map(project => project.key));
 
-      if (response.ok) {
-        onSave({ ...data, url: siteUrl, status: 'connected' });
-      } else if (response.status === 403) {
-        setError("Proxy access denied. Please visit https://cors-anywhere.herokuapp.com/corsdemo and click 'Request temporary access' to enable the development proxy.");
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.errorMessages?.[0] || `Verification failed (Status: ${response.status})`);
+      if (fetchedProjects.length === 0) {
+        setError('Connection verified, but no Jira projects were visible for this account.');
       }
-    } catch (err: any) {
-      setError(err.message === 'Failed to fetch'
-        ? "CORS Blocked: Please visit https://cors-anywhere.herokuapp.com/corsdemo to enable the temporary proxy access, then try again."
-        : `Error: ${err.message}`);
+    } catch (err) {
+      setError(err instanceof Error
+        ? err.message
+        : 'Unable to connect to Jira. Check your site URL, email, and API token.');
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setError(null);
+
+    try {
+      const selectedProjects = projects.filter(project => selectedKeys.includes(project.key));
+      if (selectedProjects.length === 0) {
+        setError('Select at least one Jira project to sync.');
+        return;
+      }
+
+      const tasks = await fetchJiraTasksForProjects(data, selectedProjects);
+      onSave({
+        ...data,
+        status: 'connected',
+        projects: selectedProjects,
+        tasks,
+        selectedProjectKeys: selectedProjects.map(project => project.key),
+      });
+    } catch (err) {
+      setError(err instanceof Error
+        ? err.message
+        : 'Connected to Jira, but task sync failed.');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -188,6 +223,12 @@ const JiraModal = ({ isOpen, onClose, onSave, app }: any) => {
                 <X className="shrink-0" size={16} />
                 {error}
               </motion.div>
+            )}
+
+            {connectedUser && (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-600 text-xs font-bold">
+                Connected as {connectedUser}. Select Jira projects to import.
+              </div>
             )}
 
             <div className="space-y-2">
@@ -235,6 +276,54 @@ const JiraModal = ({ isOpen, onClose, onSave, app }: any) => {
                 "Verify & Connect"
               )}
             </button>
+
+            {projects.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black text-text-muted uppercase tracking-widest ml-1">Projects to Sync</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedKeys(selectedKeys.length === projects.length ? [] : projects.map(project => project.key))}
+                    className="text-[11px] font-black text-primary hover:underline"
+                  >
+                    {selectedKeys.length === projects.length ? 'Clear All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="max-h-52 overflow-y-auto rounded-2xl border border-border bg-page p-2 space-y-1">
+                  {projects.map(project => {
+                    const selected = selectedKeys.includes(project.key);
+                    return (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => setSelectedKeys(prev => selected ? prev.filter(key => key !== project.key) : [...prev, project.key])}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${selected ? 'bg-primary/10 text-primary' : 'hover:bg-card text-text-main'}`}
+                      >
+                        <span>
+                          <span className="block text-sm font-black">{project.name}</span>
+                          <span className="block text-[11px] font-bold text-text-muted">{project.key}</span>
+                        </span>
+                        {selected && <Check size={16} />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleSync}
+                  disabled={isSyncing || selectedKeys.length === 0}
+                  className="w-full py-4 bg-primary text-white rounded-2xl font-black text-sm hover:bg-primary-hover transition-all shadow-lg shadow-primary-light disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSyncing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Fetching projects & tasks...
+                    </>
+                  ) : (
+                    `Sync ${selectedKeys.length} Project${selectedKeys.length === 1 ? '' : 's'}`
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -264,13 +353,39 @@ const IntegrationCard = ({ app, onUpdate }: any) => {
 
   const handleDelete = () => {
     onUpdate(app.id, { status: 'disconnected', webhookUrl: '', jiraUrl: '', jiraEmail: '', jiraToken: '' });
+    if (app.id === 'jira') {
+      localStorage.removeItem(JIRA_STORAGE_KEYS.connected);
+      localStorage.removeItem(JIRA_STORAGE_KEYS.config);
+      localStorage.removeItem(JIRA_STORAGE_KEYS.projects);
+      localStorage.removeItem(JIRA_STORAGE_KEYS.tasks);
+      localStorage.removeItem(JIRA_STORAGE_KEYS.selectedProjectKeys);
+      window.dispatchEvent(new Event('storage'));
+    }
   };
 
   const handleTest = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    alert(app.id === 'zoho-cliq' ? 'Test message sent to Zoho Cliq!' : 'Successfully synced data from Jira!');
-    setLoading(false);
+    try {
+      if (app.id === 'jira') {
+        const rawConfig = localStorage.getItem(JIRA_STORAGE_KEYS.config);
+        const rawProjects = localStorage.getItem(JIRA_STORAGE_KEYS.projects);
+        if (!rawConfig || !rawProjects) throw new Error('Connect Jira and select projects first.');
+
+        const config = JSON.parse(rawConfig) as JiraConfig;
+        const projects = JSON.parse(rawProjects) as JiraProject[];
+        const tasks = await fetchJiraTasksForProjects(config, projects);
+        localStorage.setItem(JIRA_STORAGE_KEYS.tasks, JSON.stringify(tasks));
+        window.dispatchEvent(new Event('storage'));
+        alert(`Synced ${projects.length} Jira project${projects.length === 1 ? '' : 's'} and ${tasks.length} task${tasks.length === 1 ? '' : 's'}.`);
+      } else {
+        await new Promise(r => setTimeout(r, 1000));
+        alert('Test message sent to Zoho Cliq!');
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Sync failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -365,13 +480,15 @@ const IntegrationCard = ({ app, onUpdate }: any) => {
         onSave={(data: any) => {
           onUpdate(app.id, { status: 'connected', ...data });
           setShowJiraModal(false);
-          // Save full credentials for other pages to use
-          localStorage.setItem('jira_connected', 'true');
-          localStorage.setItem('jira_config', JSON.stringify({
+          localStorage.setItem(JIRA_STORAGE_KEYS.connected, 'true');
+          localStorage.setItem(JIRA_STORAGE_KEYS.config, JSON.stringify({
             url: data.url,
             email: data.email,
             token: data.token
           }));
+          localStorage.setItem(JIRA_STORAGE_KEYS.projects, JSON.stringify(data.projects ?? []));
+          localStorage.setItem(JIRA_STORAGE_KEYS.tasks, JSON.stringify(data.tasks ?? []));
+          localStorage.setItem(JIRA_STORAGE_KEYS.selectedProjectKeys, JSON.stringify(data.selectedProjectKeys ?? []));
           window.dispatchEvent(new Event('storage'));
         }}
       />
@@ -384,7 +501,20 @@ const IntegrationCard = ({ app, onUpdate }: any) => {
 const Integrations: React.FC = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [search, setSearch] = useState('');
-  const [apps, setApps] = useState(INITIAL_APPS);
+  const [apps, setApps] = useState(() => {
+    const rawConfig = localStorage.getItem(JIRA_STORAGE_KEYS.config);
+    const jiraConnected = localStorage.getItem(JIRA_STORAGE_KEYS.connected) === 'true';
+    const jiraConfig = rawConfig ? JSON.parse(rawConfig) : null;
+    return INITIAL_APPS.map(app => app.id === 'jira' && jiraConnected
+      ? {
+          ...app,
+          status: 'connected',
+          jiraUrl: jiraConfig?.url ?? '',
+          jiraEmail: jiraConfig?.email ?? '',
+          jiraToken: jiraConfig?.token ?? '',
+        }
+      : app);
+  });
 
   const updateApp = (id: string, updates: any) => {
     setApps(prev => prev.map(app => app.id === id ? { ...app, ...updates } : app));

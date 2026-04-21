@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   FolderPlus, Calendar, Layout as LayoutIcon, BarChart3, Filter, Grid, List, ChevronDown, Check
 } from 'lucide-react';
+import type { JiraProject, JiraTask } from '../../types/jira';
+import { JIRA_STORAGE_KEYS } from '../../types/jira';
 
 const ProjectCard = ({
   title,
@@ -270,34 +272,38 @@ const MOCK_PROJECTS: Project[] = [
   }
 ];
 
-const MOCK_JIRA_PROJECTS: Project[] = [
-  {
-    id: 'jira-1',
-    title: "[Jira] API Migration",
-    description: "Cloud migration of legacy endpoints",
-    status: "In Progress",
-    deadline: "Mar 20, 2026",
-    progress: 45,
-    tasks: 124,
-    activities: 540,
-    startDate: "Feb 01, 2026",
-    priority: "High",
-    isJira: true
-  },
-  {
-    id: 'jira-2',
-    title: "[Jira] Security Patching",
-    description: "CVE vulnerability remediation",
-    status: "Planning",
-    deadline: "Feb 28, 2026",
-    progress: 20,
-    tasks: 45,
-    activities: 120,
-    startDate: "Feb 10, 2026",
-    priority: "High",
-    isJira: true
+const readJson = <T,>(key: string, fallback: T): T => {
+  const raw = localStorage.getItem(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
   }
-];
+};
+
+const mapJiraProjects = (projects: JiraProject[], tasks: JiraTask[]): Project[] => {
+  return projects.map(project => {
+    const projectTasks = tasks.filter(task => task.projectKey === project.key);
+    const completed = projectTasks.filter(task => /done|complete|closed/i.test(task.status)).length;
+    const progress = projectTasks.length > 0 ? Math.round((completed / projectTasks.length) * 100) : 0;
+    const nextDue = projectTasks.find(task => task.due !== 'TBD')?.due ?? 'TBD';
+
+    return {
+      id: `jira-${project.key}`,
+      title: `[Jira] ${project.name}`,
+      description: `${project.key} · ${project.projectTypeKey ?? 'Jira project'}`,
+      status: progress === 100 && projectTasks.length > 0 ? 'Completed' : 'In Progress',
+      deadline: nextDue,
+      progress,
+      tasks: projectTasks.length,
+      activities: projectTasks.length,
+      startDate: 'Synced from Jira',
+      priority: 'Medium',
+      isJira: true,
+    };
+  });
+};
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -305,12 +311,22 @@ const Projects = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeStatus, setActiveStatus] = useState('All Status');
   const [jiraConnected, setJiraConnected] = useState(localStorage.getItem('jira_connected') === 'true');
+  const [jiraProjects, setJiraProjects] = useState<Project[]>(() => mapJiraProjects(
+    readJson<JiraProject[]>(JIRA_STORAGE_KEYS.projects, []),
+    readJson<JiraTask[]>(JIRA_STORAGE_KEYS.tasks, []),
+  ));
   const filterRef = useRef<HTMLDivElement>(null);
 
   const statuses = ['All Status', 'In Progress', 'Pending', 'Completed', 'Planning', 'On Hold'];
 
   useEffect(() => {
-    const handleStorage = () => setJiraConnected(localStorage.getItem('jira_connected') === 'true');
+    const handleStorage = () => {
+      setJiraConnected(localStorage.getItem(JIRA_STORAGE_KEYS.connected) === 'true');
+      setJiraProjects(mapJiraProjects(
+        readJson<JiraProject[]>(JIRA_STORAGE_KEYS.projects, []),
+        readJson<JiraTask[]>(JIRA_STORAGE_KEYS.tasks, []),
+      ));
+    };
     window.addEventListener('storage', handleStorage);
     
     const handleClickOutside = (event: MouseEvent) => {
@@ -325,7 +341,7 @@ const Projects = () => {
     }
   }, []);
 
-  const allProjects = jiraConnected ? [...MOCK_PROJECTS, ...MOCK_JIRA_PROJECTS] : MOCK_PROJECTS;
+  const allProjects = jiraConnected ? [...MOCK_PROJECTS, ...jiraProjects] : MOCK_PROJECTS;
 
   const [activeSource, setActiveSource] = useState('All Sources');
   const sources = ['All Sources', 'Local', 'Jira'];
