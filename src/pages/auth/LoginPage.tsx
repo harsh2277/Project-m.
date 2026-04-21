@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import dashboardImg from '../../assets/dashboard-screenshot.png';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [email, setEmail] = useState('sellostore@company.com');
-  const [password, setPassword] = useState('5ellostore.');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError(null);
+    setLoading(true);
+    try {
+      await signIn(email, password);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,6 +56,13 @@ const LoginPage: React.FC = () => {
           <p className="text-[14px] text-text-muted mb-8">Enter your email and password to access your account.</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            {/* Error banner */}
+            {error && (
+              <div className="px-4 py-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[13px] font-semibold">
+                {error}
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label className="block text-[12px] font-semibold text-text-muted mb-1.5">Email</label>
@@ -49,6 +70,7 @@ const LoginPage: React.FC = () => {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                required
                 className="bg-transparent w-full px-4 py-3 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                 style={{ background: 'transparent' }}
                 placeholder="your@email.com"
@@ -63,6 +85,7 @@ const LoginPage: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  required
                   className="bg-transparent w-full px-4 py-3 pr-11 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   style={{ background: 'transparent' }}
                   placeholder="••••••••"
@@ -97,9 +120,10 @@ const LoginPage: React.FC = () => {
             <motion.button
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="w-full mt-2 py-3.5 bg-primary hover:opacity-90 text-white rounded-lg text-[14px] font-bold tracking-wide shadow-lg shadow-primary/25 transition-all"
+              disabled={loading}
+              className="w-full mt-2 py-3.5 bg-primary hover:opacity-90 text-white rounded-lg text-[14px] font-bold tracking-wide shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Log In
+              {loading ? <><Loader2 size={16} className="animate-spin" /> Signing in…</> : 'Log In'}
             </motion.button>
           </form>
 

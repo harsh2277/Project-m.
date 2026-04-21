@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, CheckCircle, Send, X } from 'lucide-react';
+import { CheckCircle, Send, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import dashboardImg from '../../assets/dashboard-screenshot.png';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
+  const { resetPassword } = useAuth();
+
   const [email, setEmail] = useState('');
   const [showPopup, setShowPopup] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
+    if (!email.trim()) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await resetPassword(email);
       setShowPopup(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,6 +59,13 @@ const ForgotPasswordPage: React.FC = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Error banner */}
+            {error && (
+              <div className="px-4 py-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[13px] font-semibold">
+                {error}
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label className="block text-[12px] font-semibold text-text-muted mb-1.5">Email</label>
@@ -64,9 +84,10 @@ const ForgotPasswordPage: React.FC = () => {
             <motion.button
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="w-full mt-2 py-3.5 bg-primary hover:opacity-90 text-white rounded-lg text-[14px] font-bold tracking-wide shadow-lg shadow-primary/25 transition-all"
+              disabled={loading}
+              className="w-full mt-2 py-3.5 bg-primary hover:opacity-90 text-white rounded-lg text-[14px] font-bold tracking-wide shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Send Reset Link
+              {loading ? <><Loader2 size={16} className="animate-spin" /> Sending…</> : 'Send Reset Link'}
             </motion.button>
           </form>
 

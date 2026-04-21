@@ -8,8 +8,21 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-const SidebarItem = ({ icon: Icon, label, active = false, badge, hasDropdown = false, isCollapsed = false, path, onPlusClick }: any) => {
+// Suppress unused import warning — BarChart3 kept for potential future use
+void BarChart3;
+
+const SidebarItem = ({ icon: Icon, label, active = false, badge, hasDropdown = false, isCollapsed = false, path, onPlusClick }: {
+  icon: React.ElementType;
+  label: string;
+  active?: boolean;
+  badge?: string;
+  hasDropdown?: boolean;
+  isCollapsed?: boolean;
+  path?: string;
+  onPlusClick?: () => void;
+}) => {
   const navigate = useNavigate();
   return (
     <div
@@ -54,6 +67,24 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { profile, user, signOut } = useAuth();
+
+  /* Derived display values */
+  const displayName =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
+    user?.email?.split('@')[0] ||
+    'User';
+  const displayRole = profile?.job_title ?? 'Member';
+  const avatarUrl = profile?.avatar_url
+    ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=FBBF24&color=fff`;
+
+  const handleSignOut = async () => {
+    setIsProfileMenuOpen(false);
+    // signOut() clears session state synchronously then invalidates the Supabase token
+    await signOut();
+    // Navigate AFTER state is cleared so PublicRoute sees session===null
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="flex h-screen overflow-hidden font-sans" style={{ backgroundColor: 'var(--bg-page)' }}>
@@ -185,10 +216,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               >
                 <div className="text-right hidden md:block">
-                  <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-main)' }}>Shakib Ali</p>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Designer</p>
+                  <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-main)' }}>{displayName}</p>
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{displayRole}</p>
                 </div>
-                <img src="https://ui-avatars.com/api/?name=Shakib+Ali&background=FBBF24&color=fff" alt="User" className="w-10 h-10 rounded-xl" />
+                <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-xl" />
                 <ChevronDown size={16} className={`text-slate-400 ml-1 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
               </div>
 
@@ -201,14 +232,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     className="absolute top-full right-0 mt-2 w-48 rounded-2xl shadow-xl z-50 py-2 overflow-hidden"
                     style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
                   >
-                    <div className="px-4 py-2.5 cursor-pointer flex items-center gap-3 text-sm font-semibold transition-colors hover:opacity-80" style={{ color: 'var(--text-main)' }}>
+                    <div
+                      className="px-4 py-2.5 cursor-pointer flex items-center gap-3 text-sm font-semibold transition-colors hover:opacity-80"
+                      style={{ color: 'var(--text-main)' }}
+                      onClick={() => { setIsProfileMenuOpen(false); navigate('/settings'); }}
+                    >
                       <User size={16} style={{ color: 'var(--text-muted)' }} />
                       Profile
                     </div>
                     <div className="h-px my-1" style={{ backgroundColor: 'var(--border-subtle)' }}></div>
                     <div
                       className="px-4 py-2.5 cursor-pointer flex items-center gap-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950"
-                      onClick={() => { window.location.href = '/login'; }}
+                      onClick={handleSignOut}
                     >
                       <LogOut size={16} />
                       Logout

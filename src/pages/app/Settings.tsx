@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components/layout/Layout';
 import {
   User, Bell, Shield, Palette, Sliders,
@@ -7,12 +7,14 @@ import {
   ChevronDown,
   Globe,
   Trash2,
-  Lock
+  Lock,
+  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-const SettingsSection = ({ title, description, children }: any) => (
+const SettingsSection = ({ title, description, children }: { title: string; description: string; children: React.ReactNode }) => (
   <div className="bg-card rounded-[20px] border border-border p-6 mb-6">
     <div className="mb-6">
       <h3 className="text-[18px] font-bold text-text-main tracking-tight mb-1">{title}</h3>
@@ -24,7 +26,13 @@ const SettingsSection = ({ title, description, children }: any) => (
   </div>
 );
 
-const SettingItem = ({ icon: Icon, label, description, rightElement, onClick }: any) => (
+const SettingItem = ({ icon: Icon, label, description, rightElement, onClick }: {
+  icon: React.ElementType;
+  label: string;
+  description?: string;
+  rightElement?: React.ReactNode;
+  onClick?: () => void;
+}) => (
   <div
     className="flex items-center justify-between p-4 rounded-[16px] border border-transparent hover:border-border hover:bg-page transition-all cursor-pointer group"
     onClick={onClick}
@@ -42,7 +50,7 @@ const SettingItem = ({ icon: Icon, label, description, rightElement, onClick }: 
   </div>
 );
 
-const CustomToggle = ({ active, onToggle }: any) => (
+const CustomToggle = ({ active, onToggle }: { active: boolean; onToggle: () => void }) => (
   <button
     onClick={(e) => { e.stopPropagation(); onToggle(); }}
     className={`w-11 h-6 rounded-full p-1 transition-all flex items-center ${active ? 'bg-primary justify-end' : 'bg-page border border-border justify-start'}`}
@@ -53,9 +61,76 @@ const CustomToggle = ({ active, onToggle }: any) => (
 
 const Settings = () => {
   const { theme, setTheme } = useTheme();
+  const { profile, settings, user, updateProfile, updateSettings } = useAuth();
   const [activeTab, setActiveTab] = useState('Account');
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [language, setLanguage] = useState('en-US');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
+
+  /* ── Profile form state ── */
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [bio, setBio] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  /* Seed form from loaded profile */
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name ?? '');
+      setLastName(profile.last_name ?? '');
+      setCompanyName(profile.company_name ?? '');
+      setJobTitle(profile.job_title ?? '');
+      setBio(profile.bio ?? '');
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (settings) {
+      setEmailNotif(settings.email_notifications);
+      setPushNotif(settings.push_notifications);
+      setTwoFactorEnabled(settings.two_factor_enabled);
+      setLanguage(settings.language);
+      setTimezone(settings.timezone);
+      setTheme(settings.theme);
+    }
+  }, [setTheme, settings]);
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      await Promise.all([
+        updateProfile({
+          first_name: firstName.trim() || null,
+          last_name: lastName.trim() || null,
+          company_name: companyName.trim() || null,
+          job_title: jobTitle.trim() || null,
+          bio: bio.trim() || null,
+        }),
+        updateSettings({
+          theme,
+          email_notifications: emailNotif,
+          push_notifications: pushNotif,
+          two_factor_enabled: twoFactorEnabled,
+          language,
+          timezone,
+        }),
+      ]);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const tabs = [
     { id: 'Account', icon: User },
@@ -64,6 +139,13 @@ const Settings = () => {
     { id: 'Appearance', icon: Palette },
     { id: 'General', icon: Sliders },
   ];
+
+  const displayName =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
+    user?.email?.split('@')[0] ||
+    'User';
+  const avatarUrl = profile?.avatar_url
+    ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=003bff&color=fff&size=128`;
 
   return (
     <Layout>
@@ -75,11 +157,42 @@ const Settings = () => {
             <p className="text-[14px] text-text-muted mt-1 font-medium">Manage your personal preferences and account configuration</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="px-6 py-2.5 bg-card border border-border rounded-full text-[14px] font-bold text-text-muted hover:bg-page transition-all">
+            {saveError && (
+              <span className="text-[13px] text-rose-600 font-semibold">{saveError}</span>
+            )}
+            {saveSuccess && (
+              <span className="text-[13px] text-emerald-600 font-semibold flex items-center gap-1">
+                <Check size={14} /> Saved!
+              </span>
+            )}
+            <button
+              onClick={() => {
+                if (profile) {
+                  setFirstName(profile.first_name ?? '');
+                  setLastName(profile.last_name ?? '');
+                  setCompanyName(profile.company_name ?? '');
+                  setJobTitle(profile.job_title ?? '');
+                  setBio(profile.bio ?? '');
+                }
+                if (settings) {
+                  setEmailNotif(settings.email_notifications);
+                  setPushNotif(settings.push_notifications);
+                  setTwoFactorEnabled(settings.two_factor_enabled);
+                  setLanguage(settings.language);
+                  setTimezone(settings.timezone);
+                  setTheme(settings.theme);
+                }
+              }}
+              className="px-6 py-2.5 bg-card border border-border rounded-full text-[14px] font-bold text-text-muted hover:bg-page transition-all"
+            >
               Cancel
             </button>
-            <button className="px-8 py-2.5 text-white rounded-full text-[14px] font-bold transition-all shadow-sm bg-primary hover:bg-primary-hover">
-              Save Changes
+            <button
+              onClick={handleSaveProfile}
+              disabled={saving}
+              className="px-8 py-2.5 text-white rounded-full text-[14px] font-bold transition-all shadow-sm bg-primary hover:bg-primary-hover flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -116,7 +229,7 @@ const Settings = () => {
                     <div className="flex items-center gap-6 mb-8 p-2">
                       <div className="relative group">
                         <img
-                          src="https://ui-avatars.com/api/?name=Shakib+Ali&background=003bff&color=fff&size=128"
+                          src={avatarUrl}
                           className="w-20 h-20 rounded-[24px] object-cover border border-border group-hover:border-primary transition-all"
                           alt="Avatar"
                         />
@@ -125,8 +238,8 @@ const Settings = () => {
                         </button>
                       </div>
                       <div>
-                        <h4 className="text-[18px] font-bold text-text-main">Shakib Ali</h4>
-                        <p className="text-[13px] text-text-muted font-medium">shakib@proflow.io</p>
+                        <h4 className="text-[18px] font-bold text-text-main">{displayName}</h4>
+                        <p className="text-[13px] text-text-muted font-medium">{user?.email ?? ''}</p>
                         <div className="flex gap-4 mt-2">
                           <button className="text-[12px] font-bold text-primary hover:underline transition-all">Upload New</button>
                           <button className="text-[12px] font-bold text-rose-500 hover:underline transition-all">Remove</button>
@@ -136,16 +249,50 @@ const Settings = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                       <div className="space-y-2">
-                        <label className="text-[12px] font-bold text-text-main">Full Name</label>
-                        <input defaultValue="Shakib Ali" className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all" />
+                        <label className="text-[12px] font-bold text-text-main">First Name</label>
+                        <input
+                          value={firstName}
+                          onChange={e => setFirstName(e.target.value)}
+                          className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all"
+                          placeholder="John"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[12px] font-bold text-text-main">Last Name</label>
+                        <input
+                          value={lastName}
+                          onChange={e => setLastName(e.target.value)}
+                          className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all"
+                          placeholder="Doe"
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[12px] font-bold text-text-main">Job Title</label>
-                        <input defaultValue="UI/UX Designer" className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all" />
+                        <input
+                          value={jobTitle}
+                          onChange={e => setJobTitle(e.target.value)}
+                          className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all"
+                          placeholder="e.g. UI/UX Designer"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[12px] font-bold text-text-main">Company Name</label>
+                        <input
+                          value={companyName}
+                          onChange={e => setCompanyName(e.target.value)}
+                          className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all"
+                          placeholder="e.g. Acme Inc."
+                        />
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <label className="text-[12px] font-bold text-text-main">Bio</label>
-                        <textarea rows={3} defaultValue="Designing the future of project management at ProFlow." className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all resize-none" />
+                        <textarea
+                          rows={3}
+                          value={bio}
+                          onChange={e => setBio(e.target.value)}
+                          placeholder="Tell your team what you work on."
+                          className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all resize-none"
+                        />
                       </div>
                     </div>
                   </SettingsSection>
@@ -201,7 +348,7 @@ const Settings = () => {
                 >
                   <SettingsSection title="Interface Style" description="Select a theme that suits your working environment">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <button 
+                      <button
                         onClick={() => setTheme('light')}
                         className={`p-5 rounded-[20px] border-2 flex flex-col items-center gap-3 transition-all ${theme === 'light' ? 'border-primary bg-card/50' : 'border-border bg-page/50'}`}
                       >
@@ -212,7 +359,7 @@ const Settings = () => {
                         {theme === 'light' && <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center"><Check size={12} className="text-white" /></div>}
                       </button>
 
-                      <button 
+                      <button
                         onClick={() => setTheme('dark')}
                         className={`p-5 rounded-[20px] border-2 flex flex-col items-center gap-3 transition-all ${theme === 'dark' ? 'border-primary bg-card/50' : 'border-border bg-page/50'}`}
                       >
@@ -271,7 +418,7 @@ const Settings = () => {
                       icon={Lock}
                       label="Two-Factor Authentication (2FA)"
                       description="Add a secondary verification step to your login process"
-                      rightElement={<CustomToggle active={true} onToggle={() => { }} />}
+                      rightElement={<CustomToggle active={twoFactorEnabled} onToggle={() => setTwoFactorEnabled(!twoFactorEnabled)} />}
                     />
                     <SettingItem
                       icon={Smartphone}
@@ -297,11 +444,15 @@ const Settings = () => {
                       <div className="space-y-2">
                         <label className="text-[12px] font-bold text-text-main">Default Language</label>
                         <div className="relative">
-                          <select className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all appearance-none cursor-pointer">
-                            <option>English (US)</option>
-                            <option>Spanish</option>
-                            <option>French</option>
-                            <option>German</option>
+                          <select
+                            value={language}
+                            onChange={e => setLanguage(e.target.value)}
+                            className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="en-US">English (US)</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
                           </select>
                           <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                         </div>
@@ -309,11 +460,15 @@ const Settings = () => {
                       <div className="space-y-2">
                         <label className="text-[12px] font-bold text-text-main">Timezone</label>
                         <div className="relative">
-                          <select className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all appearance-none cursor-pointer">
-                            <option>(GMT-08:00) Pacific Time</option>
-                            <option>(GMT+00:00) London</option>
-                            <option>(GMT+05:30) Mumbai</option>
-                            <option>(GMT+09:00) Tokyo</option>
+                          <select
+                            value={timezone}
+                            onChange={e => setTimezone(e.target.value)}
+                            className="w-full px-4 py-3 bg-page border border-border rounded-[14px] text-[14px] font-bold text-text-main outline-none focus:bg-card focus:border-primary transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="America/Los_Angeles">(GMT-08:00) Pacific Time</option>
+                            <option value="Europe/London">(GMT+00:00) London</option>
+                            <option value="Asia/Kolkata">(GMT+05:30) Mumbai</option>
+                            <option value="Asia/Tokyo">(GMT+09:00) Tokyo</option>
                           </select>
                           <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                         </div>

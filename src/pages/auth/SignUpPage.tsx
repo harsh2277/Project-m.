@@ -1,19 +1,83 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import dashboardImg from '../../assets/dashboard-screenshot.png';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (!agreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await signUp({
+        email,
+        password,
+        firstName,
+        lastName,
+        termsAccepted: agreed,
+      });
+      // Supabase may require email confirmation; show a success state
+      setSuccess(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign up failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (success) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-card px-6">
+        <div className="max-w-sm w-full text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h2 className="text-[24px] font-bold text-text-main">Check your inbox!</h2>
+          <p className="text-[14px] text-text-muted">
+            We've sent a confirmation email to <span className="font-semibold text-text-main">{email}</span>.
+            Click the link in the email to activate your account.
+          </p>
+          <button
+            onClick={() => navigate('/login')}
+            className="w-full py-3 bg-primary text-white rounded-lg font-bold text-[14px] hover:opacity-90 transition-all mt-4"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-card">
@@ -41,12 +105,22 @@ const SignUpPage: React.FC = () => {
           <p className="text-[14px] text-text-muted mb-7">Start your journey — it's free forever.</p>
 
           <form onSubmit={handleSignUp} className="space-y-4">
+            {/* Error banner */}
+            {error && (
+              <div className="px-4 py-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[13px] font-semibold">
+                {error}
+              </div>
+            )}
+
             {/* Name Row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[12px] font-semibold text-text-muted mb-1.5">First Name</label>
                 <input
                   type="text"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  required
                   className="bg-transparent w-full px-4 py-3 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   style={{ background: 'transparent' }}
                   placeholder="John"
@@ -56,6 +130,9 @@ const SignUpPage: React.FC = () => {
                 <label className="block text-[12px] font-semibold text-text-muted mb-1.5">Last Name</label>
                 <input
                   type="text"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  required
                   className="bg-transparent w-full px-4 py-3 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   style={{ background: 'transparent' }}
                   placeholder="Doe"
@@ -68,6 +145,9 @@ const SignUpPage: React.FC = () => {
               <label className="block text-[12px] font-semibold text-text-muted mb-1.5">Email</label>
               <input
                 type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
                 className="bg-transparent w-full px-4 py-3 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                 style={{ background: 'transparent' }}
                 placeholder="your@email.com"
@@ -80,6 +160,10 @@ const SignUpPage: React.FC = () => {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={8}
                   className="bg-transparent w-full px-4 py-3 pr-11 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   style={{ background: 'transparent' }}
                   placeholder="At least 8 characters"
@@ -100,6 +184,9 @@ const SignUpPage: React.FC = () => {
               <div className="relative">
                 <input
                   type={showConfirm ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
                   className="bg-transparent w-full px-4 py-3 pr-11 border border-border rounded-lg text-[14px] text-text-main placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   style={{ background: 'transparent' }}
                   placeholder="Re-enter password"
@@ -134,9 +221,10 @@ const SignUpPage: React.FC = () => {
             <motion.button
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="w-full mt-1 py-3.5 bg-primary hover:opacity-90 text-white rounded-lg text-[14px] font-bold tracking-wide shadow-lg shadow-primary/25 transition-all"
+              disabled={loading}
+              className="w-full mt-1 py-3.5 bg-primary hover:opacity-90 text-white rounded-lg text-[14px] font-bold tracking-wide shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create Account
+              {loading ? <><Loader2 size={16} className="animate-spin" /> Creating account…</> : 'Create Account'}
             </motion.button>
           </form>
 

@@ -42,7 +42,7 @@ const getTagStyle = (tag: string) => {
   }
 };
 
-const TABS = ['Overview', 'Board', 'Tasks', 'Files', 'Activity', 'Settings'];
+const TABS = ['Overview', 'Board', 'Tasks', 'Files', 'Activity'];
 
 /* ─── Activity Hours Bar Chart ──────────────────────────────── */
 const HOURS_DATA = [
@@ -906,10 +906,10 @@ const ProjectDetail = () => {
                      </p>
                    </div>
                   <button
-                    onClick={() => setActiveTab('Settings')}
+                    onClick={() => navigate('/integrations')}
                     className="px-6 py-2.5 bg-primary text-white rounded-full text-sm font-bold hover:bg-primary-hover transition-all"
                   >
-                    Go to Settings
+                    Go to Integrations
                   </button>
                 </div>
                ) : syncError ? (
@@ -986,93 +986,6 @@ const ProjectDetail = () => {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════
-            SETTINGS TAB (Integrations)
-        ══════════════════════════════════════════════════════ */}
-         {activeTab === 'Settings' && (
-          <div className="max-w-4xl space-y-8 pb-12">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-black text-text-main">Project Settings</h2>
-              <p className="text-text-muted font-medium leading-relaxed">Customize your project workflow and connect external tools.</p>
-            </div>
- 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-card p-8 rounded-[32px] border border-border shadow-sm flex flex-col justify-between h-full group hover:shadow-md transition-all">
-                <div className="space-y-4">
-                   <div className="flex justify-between items-start">
-                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                      <Bug size={32} />
-                    </div>
-                    {linkedJiraProject && (
-                      <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-500/20">
-                        <ShieldCheck size={14} /> Linked
-                      </div>
-                    )}
-                  </div>
-                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-text-main">Jira Integration</h3>
-                    <p className="text-sm text-text-muted font-medium leading-relaxed">
-                      Automatically sync Jira issues with this project. See real-time statuses, assignees, and priority levels.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                   {!isJiraIntegrated ? (
-                    <button
-                      onClick={() => navigate('/integrations')}
-                      className="w-full py-3.5 bg-page text-text-muted rounded-2xl font-bold text-sm hover:bg-border transition-all flex items-center justify-center gap-2"
-                    >
-                      Setup Global Integration <ArrowRight size={16} />
-                    </button>
-                   ) : linkedJiraProject ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-page rounded-2xl border border-border flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center text-text-main font-black text-sm shadow-sm">
-                            {linkedJiraProject.key}
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Linked Project</p>
-                            <p className="text-sm font-bold text-text-main">{linkedJiraProject.name}</p>
-                          </div>
-                        </div>
-                          <button
-                           onClick={() => setLinkedJiraProject(null)}
-                           className="text-text-muted hover:text-rose-500 p-2 rounded-xl transition-colors"
-                         >
-                           <Trash2 size={16} />
-                         </button>
-                       </div>
-                       <button
-                         onClick={() => setShowJiraLinkModal(true)}
-                         className="w-full py-3.5 bg-card border border-border text-text-main rounded-2xl font-bold text-sm hover:bg-page transition-all"
-                       >
-                         Change Linked Project
-                       </button>
-                    </div>
-                  ) : (
-                     <button
-                       onClick={() => setShowJiraLinkModal(true)}
-                       className="w-full py-3.5 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary-hover transition-all shadow-lg flex items-center justify-center gap-2"
-                     >
-                       Connect Jira Project <Link2 size={18} />
-                     </button>
-                  )}
-                </div>
-              </div>
-
-               {/* Empty placeholder for more integrations */}
-               <div className="bg-page border-2 border-dashed border-border p-8 rounded-[32px] flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-card hover:border-primary/50 transition-all">
-                 <div className="w-14 h-14 rounded-2xl bg-card flex items-center justify-center text-text-muted group-hover:text-primary transition-colors shadow-sm mb-4">
-                   <Plus size={32} />
-                 </div>
-                 <h3 className="text-sm font-bold text-text-muted group-hover:text-text-main">Add More Integrations</h3>
-                 <p className="text-[11px] text-text-muted font-medium max-w-[120px] mt-2">Slack, GitHub, and more coming soon.</p>
-               </div>
-            </div>
-          </div>
-        )}
 
         {/* ══════════════════════════════════════════════════════
             ACTIVITY TAB
